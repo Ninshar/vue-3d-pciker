@@ -1,0 +1,45 @@
+
+ul,li{
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+}
+.picker-box {
+  position: relative;
+  width: 100%;
+  height: 250px;
+  overflow: hidden;
+  background-color: #fff;
+
+  ul{
+    width: 100%;
+    transition: transform 200ms;
+    transform: translateY(100px);
+    li{
+      height: 50px;
+      line-height: 50px;
+      width: 100%;
+      text-align: center;
+      font-size: 14px;
+      transition: transform 100ms;
+      color: rgb(70, 70, 70);
+      user-select: none;
+    }
+  }
+  .select-location{
+    position: absolute;
+    top: 100px;
+    left: 0;
+    width: 100%;
+    height: 50px;
+    background-color: #999;
+  }
+  .picker-mask{
+    position: absolute;
+    left: 0;
+    top:0;
+    width: 100%;
+    height: 100%;
+    // @include picker_mask();
+  }
+}
