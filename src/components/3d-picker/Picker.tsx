@@ -1,5 +1,8 @@
-import { computed, defineComponent, onMounted, ref } from 'vue';
+import { computed, defineComponent, onMounted, ref, watch } from 'vue';
+import PickerItem, { PickerItemDate } from './PickerItem';
 import './index.scss';
+
+
 
 export default defineComponent({
   name: 'picker',
@@ -12,138 +15,144 @@ export default defineComponent({
       type: Number,
       default: 37,
     },
+    startData: {
+      type: String,
+      default: '2000-01-01',
+    },
+    endData: {
+      type: String,
+      default: () => new Date().toDateString(),
+    }
   },
+  emits: ['change'],
+  setup(props, { emit }) {
+    const yearList = ref<PickerItemDate[]>([]);
+    const monthList = ref<PickerItemDate[]>([]);
+    const dayList = ref<PickerItemDate[]>([]);
 
-  setup(props) {
-    const pickerList = ref<string[]>([]);
-    const startPageX = ref(0);
-    const movePageX = ref(0);
-    const currentPageX = ref(0);
-    const selectIndex = ref(0);
-    const moveIndex = ref(0);
+    const selectYear = ref(2000);
+    const selectMonth = ref(1);
+    const selectDay = ref(1);
 
-    const initDate = () => {
-      for (let i = 0; i < 20; i++) {
-        pickerList.value.push(`test${i + 1}`);
+    const startYear = new Date(props.startData).getFullYear();
+    const startMonth = new Date(props.startData).getMonth() + 1;
+    const startDay = new Date(props.startData).getDay();
+    const endYear = new Date(props.endData).getFullYear();
+    const endMonth = new Date(props.endData).getMonth() + 1;
+    const endDay = new Date(props.endData).getDate();
+
+    const monthCN = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+
+    /**
+     * 初始化年月日数组
+     */
+    const setDateList = () => {
+      selectYear.value = startYear;
+      //获取年份素组
+      for (let year = startYear; year < endYear + 1; year++) {
+        yearList.value.push({
+          text: `${year}年`,
+          key: year
+        })
       }
+
+      // 获取月份数组
+      selectMonth.value = startMonth;
+      monthList.value = getMonthList();
+
+      // 获取当前月天数
+      selectDay.value = startDay;
+      dayList.value = getDayList();
     };
 
-    const initTop = computed(() => {
-      const topItemNumber = Math.floor(props.rowsNumber / 2);
-      return topItemNumber * props.itemHeight;
-    });
-
-    const slidingStyle = (index: number) => {
-      const curretIndex = moveIndex.value + selectIndex.value;
-
-      if (curretIndex === index) {
-        return {
-          transform: `rotateX(0deg)`,
-          fontSize: 18 + 'px',
-          fontWeight: 600,
-        };
-      } if (curretIndex > index) {
-        return { transform: `rotateX(${18 * (curretIndex - index) + 18}deg)` };
-      } if (curretIndex < index) {
-        return { transform: `rotateX(-${18 * (index - curretIndex) + 18}deg)` };
+    // 获取月份数组
+    const getMonthList = () => {
+      let monthArrary = [];
+      if (selectYear.value === startYear) {
+        // 开始年获取月份
+        for (let month = startMonth - 1; month < 12; month++) {
+          monthArrary.push({
+            text: monthCN[month],
+            key: month + 1,
+          });
+        }
+      } else if (selectYear.value === endYear) {
+        // 结束年获取月份
+        for (let month = 0; month < endMonth; month++) {
+          monthArrary.push({
+            text: monthCN[month],
+            key: month + 1,
+          });
+        }
+      } else {
+        // 正常获取月份
+        for (let month = 0; month < 12; month++) {
+          monthArrary.push({
+            text: monthCN[month],
+            key: month + 1,
+          });
+        }
       }
-      return { transform: `rotateX(0deg)` };
-    };
+      return monthArrary;
+    }
 
-    const renderColumnItems = () => {
-      return pickerList.value.map((item, i) => {
-        return (
-          <li
-            style={{
-              ...slidingStyle(i),
-              height: props.itemHeight + 'px',
-              lineHeight: props.itemHeight + 'px',
-            }}
-          >
-            {item}
-          </li>
-        );
-      });
-    };
+    // 获取天数
+    const getDayList = () => {
+      let dayArrary = [];
+      let dayNum = new Date(Number(selectYear.value), Number(selectMonth.value), 0);
+      if (endYear === selectYear.value && endMonth === selectMonth.value) {
+        for (let day = 1; day < endDay + 1; day++) {
+          dayArrary.push({
+            text: `${day}日`,
+            key: day,
+          });
+        }
+      } else {
+        for (let day = 1; day < dayNum.getDate() + 1; day++) {
+          dayArrary.push({
+            text: `${day}日`,
+            key: day,
+          });
+        }
+      }
+      return dayArrary;
+    }
+
+    // 更新选中年
+    const updateSelectYear = (item: PickerItemDate, index: number) => {
+      selectYear.value = item.key;
+      monthList.value = getMonthList();
+    }
+
+    // 更新选中月
+    const updateSelectMonth = (item: PickerItemDate, index: number) => {
+      selectMonth.value = item.key;
+      dayList.value = getDayList();
+    }
+
+    let timer: any = null;
+    // 更新选中天
+    const updateSelectDay = (item: PickerItemDate, index: number) => {
+      selectDay.value = item.key;
+
+      const selectData = `${selectYear.value}/${selectMonth.value}/${selectDay.value}`;
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        console.log(selectData)
+        console.log(` ${new Date(selectData)}`)
+        emit('change', selectData);
+      }, 100);
+    }
 
     onMounted(() => {
-      initDate();
+      setDateList();
     });
 
-    const touchstart = (event: TouchEvent) => {
-      // 设置滑动起点
-      startPageX.value = event.touches[0].pageY;
-    };
-
-    const touchmove = (event: TouchEvent) => {
-      event.preventDefault();
-
-      const moveDistance = event.touches[0].pageY - startPageX.value;
-      // 滚动到底部禁止滑动
-      if (
-        selectIndex.value + moveIndex.value === pickerList.value.length - 1 &&
-        moveDistance < 0
-      ) {
-        return;
-      }
-      // 滚动到顶禁止滑动
-      if (selectIndex.value + moveIndex.value === 0 && moveDistance > 0) {
-        return;
-      }
-      // 滑动中设置参数
-      movePageX.value = moveDistance * 2;
-      moveIndex.value = Math.round(-movePageX.value / props.itemHeight);
-    };
-
-    const onTouchend = () => {
-      // 当前滑动状态保存
-      selectIndex.value = moveIndex.value + selectIndex.value;
-      currentPageX.value = -(selectIndex.value * props.itemHeight);
-      // console.log(selectIndex.value, (pickerList.value.length - 1) * 50)
-      // console.log(currentPageX.value)
-
-      //  滑动超出底部置为最后一个
-      if (
-        -(selectIndex.value * props.itemHeight) <
-        -(pickerList.value.length - 1) * props.itemHeight
-      ) {
-        currentPageX.value = -(pickerList.value.length - 1) * props.itemHeight;
-        selectIndex.value = pickerList.value.length - 1;
-      }
-      //  滑动超出顶部置为第一个
-      if (currentPageX.value > 0) {
-        currentPageX.value = 0;
-        selectIndex.value = 0;
-      }
-
-      // 清除滑动中参数
-      movePageX.value = 0;
-      moveIndex.value = 0;
-    };
-
     return () => (
-      <div
-        class={['picker-box']}
-        style={{ height: props.itemHeight * props.rowsNumber + 'px' }}
-        onTouchstart={touchstart}
-        onTouchmove={touchmove}
-        onTouchend={onTouchend}
-        onTouchcancel={onTouchend}
-      >
-        <div
-          class="select-location"
-          style={{ top: initTop.value + 'px', height: props.itemHeight + 'px' }}
-        ></div>
-        <ul
-          style={{
-            transform: `translateY(${movePageX.value + currentPageX.value + initTop.value
-              }px)`,
-          }}
-        >
-          {renderColumnItems()}
-        </ul>
-
-        {/* <div class="picker-mask"></div> */}
+      <div style={{ display: 'flex', backgroundColor: '#fff', padding: '0 16px' }}>
+        <PickerItem dataList={yearList.value} {...{ onUpdateSelect: updateSelectYear }} />
+        <PickerItem dataList={monthList.value}  {...{ onUpdateSelect: updateSelectMonth }} />
+        <PickerItem dataList={dayList.value}  {...{ onUpdateSelect: updateSelectDay }} />
       </div>
     );
   },
